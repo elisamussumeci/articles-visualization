@@ -1,0 +1,29 @@
+{
+        {% for art in articles %}
+            {% if not loop.last %}
+            {
+                "date":"{{art.published}}",
+                "name":"{{art.title|e}}",
+                "text":"{% if art.summary_detail.value%}{{art.summary_detail.value|tojson|forceescape}} {% else %} {{art.title|tojson|forceescape}} {% endif %}",
+                "link":"{{art.link|e}}",
+                "author":"{{art.author}}",
+                "size":
+                "imports": {
+
+                }
+            },
+            {%else%}
+           {
+                "date":"{{art.published}}",
+                "name":"{{art.title|e}}",
+                "text":"{% if art.summary_detail.value%}{{art.summary_detail.value|tojson|forceescape}} {% else %} {{art.title|tojson|forceescape}} {% endif %}",
+                "link":"{{art.link|e}}",
+                "author":"{{art.author}}",
+                "related_articles": {
+
+                }
+            }
+            {% endif %}
+        {% endfor %}
+
+}
