@@ -1,59 +1,5 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <link type="text/css" rel="stylesheet" href="/static/css/style.css">
-  <style type="text/css">
-
-  path.arc {
-    cursor: move;
-    fill: #fff;
-  }
-
-  .node {
-    font-size: 10px;
-  }
-
-  .node:hover {
-    fill: #1f77b4;
-  }
-
-  .link {
-    fill: none;
-    stroke: #1f77b4;
-    stroke-opacity: 1;
-    pointer-events: none;
-  }
-
-  .link.source, .link.target {
-    stroke-opacity: 1;
-    stroke-width: 1px;
-    opacity: 1 !important;
-  }
-
-/*  .node.target {
-    fill: #d62728 !important;
-  }
-
-  .link.source {
-    stroke: #d62728;
-  }
-*/
-  .node.opaque, .link.opaque {
-    opacity: 0;
-  }
-
-  </style>
-</head>
-<body>
-
-<script type = "text/javascript" src="/static/js/d3.js"></script>
-<script type = "text/javascript" src="/static/js/d3.layout.js"></script>
-<script type = "text/javascript" src="/static/js/packages.js"></script>
-
-<script>
-var w = 1280,
-    h = 800,
+var w = 500,
+    h = 500,
     rx = w / 2,
     ry = h / 2,
     m0,
@@ -74,7 +20,7 @@ var line = d3.svg.line.radial()
     .angle(function(d) { return d.x / 180 * Math.PI; });
 
 // Chrome 15 bug: <http://code.google.com/p/chromium/issues/detail?id=98951>
-var div = d3.select("body").insert("div", "h2")
+var div = d3.select(".circle-vis").insert("div", "h2")
     .style("top", "-80px")
     .style("left", "-160px")
     .style("width", w + "px")
@@ -93,7 +39,7 @@ svg.append("svg:path")
     .attr("d", d3.svg.arc().outerRadius(ry - 120).innerRadius(0).startAngle(0).endAngle(2 * Math.PI))
     .on("mousedown", mousedown);
 
-d3.json("{{url_for('static', filename = 'data.json')}}", function(classes) {
+d3.json("/similarity/data.json", function(classes) {
   var nodes = cluster.nodes(packages.root(classes));
   var links = packages.imports(nodes);
   var splines = bundle(links);
@@ -122,7 +68,22 @@ d3.json("{{url_for('static', filename = 'data.json')}}", function(classes) {
         return name;
       })
       .on("mouseover", mouseover)
-      .on("mouseout", mouseout);
+      .on("mouseout", mouseout)
+      .on("click", mouseclick);
+
+    for (var i = nodes.length - 1; i >= 0; i--) {
+      var d = nodes[i];
+      var articleLinkElem = '<a href="'+d.link+'">'+d.title+'</a>';
+      $('#node-'+d.key+' text').popover({
+        html: true,
+        title: articleLinkElem,
+        content: d.summary,
+        container: 'body',
+        placement: 'auto',
+        delay: {show: 0, hide: 1000},
+        trigger: 'hover'
+      });
+    }
 
   d3.select("input[type=range]").on("change", function() {
     line.tension(this.value / 100);
@@ -172,14 +133,18 @@ function mouseup() {
   }
 }
 
+function mouseclick(d) {
+  createTimeline(d.key);
+}
+
 function mouseover(d) {
   svg.selectAll("path.link")
       .classed("opaque", true);
 
   svg.selectAll("path.link.source-" + d.key)
       .classed("source", true)
+      .classed("opaque", false)
       .each(updateNodes("target", true));
-
 }
 
 function mouseout(d) {
@@ -206,7 +171,3 @@ function cross(a, b) {
 function dot(a, b) {
   return a[0] * b[0] + a[1] * b[1];
 }
-
-</script>
-</body>
-</html>
