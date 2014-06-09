@@ -1,33 +1,42 @@
-var w = 500,
-    h = 500,
+var w = 1000,
+    h = 1000,
     rx = w / 2,
     ry = h / 2,
     m0,
     rotate = 0;
 
+var spaceLeftToCenter = ($('.container').width() - w) / 2;  
+var marginLeft = $('.container').offset().left + spaceLeftToCenter;
+var marginTop = 52;
+
 var splines = [];
 
 var cluster = d3.layout.cluster()
-    .size([360, ry - 120])
+    .size([360, ry - 120 - marginTop])
     .sort(function(a, b) { return d3.ascending(a.key, b.key); });
 
 var bundle = d3.layout.bundle();
 
+// Relações
 var line = d3.svg.line.radial()
     .interpolate("bundle")
     .tension(.85)
     .radius(function(d) { return d.y; })
     .angle(function(d) { return d.x / 180 * Math.PI; });
 
-// Chrome 15 bug: <http://code.google.com/p/chromium/issues/detail?id=98951>
-var div = d3.select(".circle-vis").insert("div", "h2")
-    .style("top", "-80px")
-    .style("left", "-160px")
+var container = d3.select(".circle-vis")
+    .style("height", (w+20) + "px");
+
+var div = d3.select(".circle-vis").insert("div")
+    .style("top", "0px")
+    .style("left", spaceLeftToCenter + "px")
     .style("width", w + "px")
     .style("height", w + "px")
     .style("position", "absolute")
-    .style("-webkit-backface-visibility", "hidden");
+    .style("-webkit-backface-visibility", "hidden")
+    .style("-moz-backface-visibility", "hidden");
 
+// Insert svg into HTML
 var svg = div.append("svg:svg")
     .attr("width", w)
     .attr("height", w)
@@ -61,8 +70,11 @@ d3.json("/similarity/data.json", function(classes) {
       .attr("dy", ".31em")
       .attr("text-anchor", function(d) { return d.x < 180 ? "start" : "end"; })
       .attr("transform", function(d) { return d.x < 180 ? null : "rotate(180)"; })
-      .text(function(d) { 
+      .text(function(d) {
         var name = d.name;
+        // Deixa o titulo do artigo apenas a primeira letra em maiuscula
+        name = name.toLowerCase();
+        name = name.charAt(0).toUpperCase() + name.slice(1);
         if (name.length > 30)
           name = name.slice(0,30) + '...';
         return name;
@@ -73,15 +85,20 @@ d3.json("/similarity/data.json", function(classes) {
 
     for (var i = nodes.length - 1; i >= 0; i--) {
       var d = nodes[i];
-      var articleLinkElem = '<a href="'+d.link+'">'+d.title+'</a>';
+      var hostnameInfo = '<small>'+d.hostname+'</small>';
+      var articleLinkElem = '<a href="'+d.link+'"><br/>'+d.title+'</a>';
+      var popoverTitle = hostnameInfo + articleLinkElem;
       $('#node-'+d.key+' text').popover({
         html: true,
-        title: articleLinkElem,
+        title: popoverTitle,
         content: d.summary,
         container: 'body',
         placement: 'auto',
-        delay: {show: 0, hide: 1000},
-        trigger: 'hover'
+        trigger: 'manual'
+      }).on('click', function(){
+        var self = $(this);
+        self.popover('show');
+        setTimeout(function(){self.popover("hide")}, 2000);
       });
     }
 
@@ -96,7 +113,9 @@ d3.select(window)
     .on("mouseup", mouseup);
 
 function mouse(e) {
-  return [e.pageX - rx, e.pageY - ry];
+  var point = [e.pageX - rx - marginLeft, e.pageY - ry - marginTop];
+  console.log(point, e);
+  return point;
 }
 
 function mousedown() {
@@ -109,6 +128,7 @@ function mousemove() {
     var m1 = mouse(d3.event),
         dm = Math.atan2(cross(m0, m1), dot(m0, m1)) * 180 / Math.PI;
     div.style("-webkit-transform", "translateY(" + (ry - rx) + "px)rotateZ(" + dm + "deg)translateY(" + (rx - ry) + "px)");
+    div.style("-moz-transform", "translateY(" + (ry - rx) + "px)rotateZ(" + dm + "deg)translateY(" + (rx - ry) + "px)");
   }
 }
 
@@ -123,6 +143,7 @@ function mouseup() {
     m0 = null;
 
     div.style("-webkit-transform", null);
+    div.style("-moz-transform", null);
 
     svg
         .attr("transform", "translate(" + rx + "," + ry + ")rotate(" + rotate + ")")

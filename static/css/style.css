@@ -8,6 +8,12 @@
   position: relative;
 }
 
+.circle-vis {
+  height: 640px;
+  width: 700px;
+  position: relative;
+}
+
 .circle-vis path.arc {
   cursor: move;
   fill: #fff;
@@ -15,10 +21,18 @@
 
 .circle-vis .node {
   font-size: 10px;
+  transition: 300ms all;
 }
 
 .circle-vis .node:hover {
   fill: #1f77b4;
+  color: blue;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.circle-vis #node-hostname {
+  display: none;
 }
 
 .circle-vis .link {
@@ -35,7 +49,8 @@
 }
 
 .circle-vis .node.opaque, .circle-vis .link.opaque {
-  opacity: 0;
+  opacity: 0.1;
+  transition: 300ms all;
 }
 
 .popover-content {

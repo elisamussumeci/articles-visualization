@@ -16,9 +16,14 @@ app = Flask(__name__)
 APP_ROOT = os.path.dirname(os.path.abspath(__file__))   # refers to application_top
 APP_STATIC = os.path.join(APP_ROOT, 'static')
 
+def fix_empty_summary(art):
+    if 'summary' not in art or art['summary'] == "":
+        art['summary'] = " "
+    return art
+
 @app.route("/")
 def root():
-    return render_template('index.html')
+    return render_template('pages/indextimeline.html')
 
 @app.route('/similarity/data.json')
 def json_similarity():
@@ -28,6 +33,7 @@ def json_similarity():
     articles = json.loads(data)
 
     for art in articles:
+        art = fix_empty_summary(art)
         art['summary'] = art['summary'][:250]
         art['summary'] = art['summary'].replace('style', 'data')
 
@@ -45,6 +51,7 @@ def json_timeline():
     articles = json.loads(data)
     for art in articles:
         art['published'] = datetime.date.fromtimestamp(art['published']['$date']/1000.).strftime("%Y,%m,%d")
+        art = fix_empty_summary(art)
     
     # Caso tenha parent na query string, filtraremos a lista de artigos
     parent = request.args.get('parent', '')
@@ -56,11 +63,11 @@ def json_timeline():
         parentObj = filter(lambda a: a['_id']['$oid'] == parent , articles)
         
         # Pegamos todos os ids dos filhos do parent
-        for child in parentObj[0]['childrenId']:
+        for child in parentObj[0]['related']:
             selectedArticles.append(child['$oid'])
 
         # Agora selecionamos os ids relevantes da lista de artigos (parent + filhos)
-        hasChildren = len(parentObj[0]['childrenId']) > 0
+        hasChildren = len(parentObj[0]['related']) > 0
         if hasChildren:
             articles = filter(lambda a: a['_id']['$oid'] in selectedArticles , articles)
         else:

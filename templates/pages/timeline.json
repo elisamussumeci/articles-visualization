@@ -18,7 +18,7 @@ storyjs_jsonp_data ={    "timeline":
                 "asset": {
                     "media":"{{art.link}}",
                     "thumbnail":"",
-                    "credit":"{{art.author}}"
+                    "credit":"{{art.author|forceescape}}"
                 }
             },
             {%else%}
@@ -30,7 +30,7 @@ storyjs_jsonp_data ={    "timeline":
                 "asset": {
                     "media":"{{art.link}}",
                     "thumbnail":"",
-                    "credit":"{{art.author}}"
+                    "credit":"{{art.author|forceescape}}"
                 }
             }
             {% endif %}
