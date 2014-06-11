@@ -1,5 +1,5 @@
-var w = 1000,
-    h = 1000,
+var w = 600,
+    h = 600,
     rx = w / 2,
     ry = h / 2,
     m0,
@@ -48,11 +48,11 @@ svg.append("svg:path")
     .attr("d", d3.svg.arc().outerRadius(ry - 120).innerRadius(0).startAngle(0).endAngle(2 * Math.PI))
     .on("mousedown", mousedown);
 
-d3.json("/similarity/data.json", function(articles) {
+var generate_visualization = function(articles){
+  svg.selectAll("*").remove();
   var nodes = cluster.nodes(packages.root(articles));
   var links = packages.imports(nodes);
   var splines = bundle(links);
-
   var path = svg.selectAll("path.link")
       .data(links)
     .enter().append("svg:path")
@@ -84,24 +84,27 @@ d3.json("/similarity/data.json", function(articles) {
       .on("click", mouseclick);
 
   for (var i = nodes.length - 1; i >= 0; i--) {
-    var d = nodes[i];
-    var hostnameInfo = '<small>'+d.hostname+'</small>';
-    var articleLinkElem = '<a href="'+d.link+'"><br/>'+d.title+'</a>';
-    var popoverTitle = hostnameInfo + articleLinkElem;
-    $('#node-'+d.key+' text').popover({
-      html: true,
-      title: popoverTitle,
-      content: d.summary,
-      container: 'body',
-      placement: 'auto',
-      trigger: 'manual'
-    }).on('click', function(){
-      var self = $(this);
-      self.popover('show');
-      setTimeout(function(){self.popover("hide")}, 2000);
-    });
-  }
-
+      var d = nodes[i];
+      var hostnameInfo = '<small>'+d.hostname+'</small>';
+      var articleLinkElem = '<a href="'+d.link+'"><br/>'+d.title+'</a>';
+      var popoverTitle = hostnameInfo + articleLinkElem;
+      $('#node-'+d.key+' text').popover({
+        html: true,
+        title: popoverTitle,
+        content: d.summary,
+        container: 'body',
+        placement: 'auto',
+        trigger: 'manual'
+      }).on('click', function(){
+        var self = $(this);
+        self.popover('show');
+        setTimeout(function(){self.popover("hide")}, 2000);
+      });
+    }
+}
+d3.json("/similarity/data.json", function(articles) {
+  
+  generate_visualization(articles)
   /* Slider de tempo */
   // Pega a data do primeiro artigo
   var startDate = articles[0].published["$date"];
@@ -119,6 +122,26 @@ d3.json("/similarity/data.json", function(articles) {
     .tickFormat(d3.time.format("%m/%Y")) // Formata a data
     .scale(scaleX); // Usa a scala scaleX
 
+  var new_articles = function(value){
+    var start = value[0],
+        end = value[1];
+    // Esconde todos os links e nós
+    svg.selectAll("path.link, .node")
+      .classed("out-time-frame", true);
+
+    var visibleArticles = []
+    for (var i = articles.length - 1; i >= 0; i--) {
+      var article = articles[i];
+      // Verifica se o artigo esta dentro da janela de tempo
+      if (start <= article.published["$date"] &&
+          end >= article.published["$date"]) {
+        visibleArticles.push(article);
+      }
+    };
+    generate_visualization(visibleArticles)
+  };
+  var tnew_articles = _.throttle(new_articles,300);
+  
   d3.select('#time-slider').call(
     d3.slider()
       .axis(xAxis)
@@ -126,50 +149,11 @@ d3.json("/similarity/data.json", function(articles) {
       .value([startDate,endDate]) // Faixa de valores iniciais 
       .on("slide", function(evt, value) {
         // Pega o valor de inicio e fim
-        var start = value[0],
-            end = value[1];
-
-        // Esconde todos os links e nós
-        svg.selectAll("path.link, .node")
-          .classed("out-time-frame", true);
-
-        var visibleArticles = [];
-        for (var i = articles.length - 1; i >= 0; i--) {
-          var article = articles[i];
-          // Verifica se o artigo esta dentro da janela de tempo
-          if (start <= article.published["$date"] &&
-              end >= article.published["$date"]) {
-            visibleArticles.push(article["_id"]["$oid"]);
-            // Exibe nó
-            svg.select('#node-'+article["_id"]["$oid"])
-              .classed("out-time-frame", false);
-          }
-        }
-        var visibleLinks = [];
-        for (var i = links.length - 1; i >= 0; i--) {
-          // Variáveis que determinam se tanto target quanto
-          // source estão entre os artigos dentro da janela de
-          // tempo
-          var source = false,
-              target = false;
-          for (var j = visibleArticles.length - 1; j >= 0; j--) {
-            if (visibleArticles[j] == links[i].source.key) {
-              source = true;
-            } else if (visibleArticles[j] == links[i].target.key) {
-              target = true;
-            }
-          }
-          // Caso os artigos de source e target estejam na janela de tempo
-          if (source && target) {
-            // Exibimos o link
-            svg.selectAll("path.link.source-" + links[i].source.key + ".target-" + links[i].target.key)
-              .classed("out-time-frame", false);
-          }
-        }
-
+        tnew_articles(value)
       })
   );
 });
+
 
 d3.select(window)
   .on("mousemove", mousemove)
