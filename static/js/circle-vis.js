@@ -48,8 +48,8 @@ svg.append("svg:path")
     .attr("d", d3.svg.arc().outerRadius(ry - 120).innerRadius(0).startAngle(0).endAngle(2 * Math.PI))
     .on("mousedown", mousedown);
 
-d3.json("/similarity/data.json", function(classes) {
-  var nodes = cluster.nodes(packages.root(classes));
+d3.json("/similarity/data.json", function(articles) {
+  var nodes = cluster.nodes(packages.root(articles));
   var links = packages.imports(nodes);
   var splines = bundle(links);
 
@@ -83,34 +83,97 @@ d3.json("/similarity/data.json", function(classes) {
       .on("mouseout", mouseout)
       .on("click", mouseclick);
 
-    for (var i = nodes.length - 1; i >= 0; i--) {
-      var d = nodes[i];
-      var hostnameInfo = '<small>'+d.hostname+'</small>';
-      var articleLinkElem = '<a href="'+d.link+'"><br/>'+d.title+'</a>';
-      var popoverTitle = hostnameInfo + articleLinkElem;
-      $('#node-'+d.key+' text').popover({
-        html: true,
-        title: popoverTitle,
-        content: d.summary,
-        container: 'body',
-        placement: 'auto',
-        trigger: 'manual'
-      }).on('click', function(){
-        var self = $(this);
-        self.popover('show');
-        setTimeout(function(){self.popover("hide")}, 2000);
-      });
-    }
+  for (var i = nodes.length - 1; i >= 0; i--) {
+    var d = nodes[i];
+    var hostnameInfo = '<small>'+d.hostname+'</small>';
+    var articleLinkElem = '<a href="'+d.link+'"><br/>'+d.title+'</a>';
+    var popoverTitle = hostnameInfo + articleLinkElem;
+    $('#node-'+d.key+' text').popover({
+      html: true,
+      title: popoverTitle,
+      content: d.summary,
+      container: 'body',
+      placement: 'auto',
+      trigger: 'manual'
+    }).on('click', function(){
+      var self = $(this);
+      self.popover('show');
+      setTimeout(function(){self.popover("hide")}, 2000);
+    });
+  }
 
-  d3.select("input[type=range]").on("change", function() {
-    line.tension(this.value / 100);
-    path.attr("d", function(d, i) { return line(splines[i]); });
-  });
+  /* Slider de tempo */
+  // Pega a data do primeiro artigo
+  var startDate = articles[0].published["$date"];
+  // Pega a data do ultimo artigo
+  var endDate = articles[articles.length-1].published["$date"];
+
+  // Cria uma escala de tempo
+  var scaleX = d3.time.scale()
+    .domain([startDate, endDate]) // Entre tal datas
+    .nice(d3.time.month, 1); // Arrendonda em um mês
+
+  // Cria eixo
+  var xAxis = d3.svg.axis()
+    .ticks(d3.time.month, 1) // Tick a cada mês
+    .tickFormat(d3.time.format("%m/%Y")) // Formata a data
+    .scale(scaleX); // Usa a scala scaleX
+
+  d3.select('#time-slider').call(
+    d3.slider()
+      .axis(xAxis)
+      .scale(scaleX)
+      .value([startDate,endDate]) // Faixa de valores iniciais 
+      .on("slide", function(evt, value) {
+        // Pega o valor de inicio e fim
+        var start = value[0],
+            end = value[1];
+
+        // Esconde todos os links e nós
+        svg.selectAll("path.link, .node")
+          .classed("out-time-frame", true);
+
+        var visibleArticles = [];
+        for (var i = articles.length - 1; i >= 0; i--) {
+          var article = articles[i];
+          // Verifica se o artigo esta dentro da janela de tempo
+          if (start <= article.published["$date"] &&
+              end >= article.published["$date"]) {
+            visibleArticles.push(article["_id"]["$oid"]);
+            // Exibe nó
+            svg.select('#node-'+article["_id"]["$oid"])
+              .classed("out-time-frame", false);
+          }
+        }
+        var visibleLinks = [];
+        for (var i = links.length - 1; i >= 0; i--) {
+          // Variáveis que determinam se tanto target quanto
+          // source estão entre os artigos dentro da janela de
+          // tempo
+          var source = false,
+              target = false;
+          for (var j = visibleArticles.length - 1; j >= 0; j--) {
+            if (visibleArticles[j] == links[i].source.key) {
+              source = true;
+            } else if (visibleArticles[j] == links[i].target.key) {
+              target = true;
+            }
+          }
+          // Caso os artigos de source e target estejam na janela de tempo
+          if (source && target) {
+            // Exibimos o link
+            svg.selectAll("path.link.source-" + links[i].source.key + ".target-" + links[i].target.key)
+              .classed("out-time-frame", false);
+          }
+        }
+
+      })
+  );
 });
 
 d3.select(window)
-    .on("mousemove", mousemove)
-    .on("mouseup", mouseup);
+  .on("mousemove", mousemove)
+  .on("mouseup", mouseup);
 
 function mouse(e) {
   var point = [e.pageX - rx - marginLeft, e.pageY - ry - marginTop];
@@ -160,22 +223,21 @@ function mouseclick(d) {
 
 function mouseover(d) {
   svg.selectAll("path.link")
-      .classed("opaque", true);
+    .classed("opaque", true);
 
   svg.selectAll("path.link.source-" + d.key)
-      .classed("source", true)
-      .classed("opaque", false)
-      .each(updateNodes("target", true));
+    .classed("source", true)
+    .classed("opaque", false)
+    .each(updateNodes("target", true));
 }
 
 function mouseout(d) {
   svg.selectAll("path.link")
-      .classed("opaque", false);
+    .classed("opaque", false);
 
   svg.selectAll("path.link.source-" + d.key)
-      .classed("source", false)
-      .each(updateNodes("target", false));
-
+    .classed("source", false)
+    .each(updateNodes("target", false));
 }
 
 function updateNodes(name, value) {

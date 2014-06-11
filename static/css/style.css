@@ -1,4 +1,3 @@
-
 .timeline-container {
   margin-left: 50px;
 }
@@ -21,7 +20,6 @@
 
 .circle-vis .node {
   font-size: 10px;
-  transition: 300ms all;
 }
 
 .circle-vis .node:hover {
@@ -45,14 +43,25 @@
 .circle-vis .link.source, .circle-vis .link.target {
   stroke-opacity: 1;
   stroke-width: 1px;
-  opacity: 1 !important;
+  opacity: 1;
 }
 
-.circle-vis .node.opaque, .circle-vis .link.opaque {
+.circle-vis .node.opaque,
+.circle-vis .link.opaque {
   opacity: 0.1;
+  transition: 300ms all;
+}
+
+.circle-vis .node.out-time-frame,
+.circle-vis .link.out-time-frame {
+  opacity: 0.1 !important;
   transition: 300ms all;
 }
 
 .popover-content {
   font-size: 12px !important;
+}
+
+#time-slider {
+  margin-bottom: 50px;
 }
